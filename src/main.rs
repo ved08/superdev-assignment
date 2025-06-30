@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{
-    Extension, Json, Router, debug_handler,
+    Json, Router, debug_handler,
     extract::{Query, rejection::JsonRejection},
     http::StatusCode,
     routing::{get, post},
@@ -20,9 +20,6 @@ use spl_token::instruction::{initialize_mint2, mint_to};
 
 #[tokio::main]
 async fn main() {
-    let rpc_url = "https://api.devnet.solana.com";
-    let client = Arc::new(RpcClient::new(rpc_url));
-
     let app = Router::new()
         .route("/keypair", post(generate_keypair))
         .route("/token/create", post(create_token))
@@ -30,23 +27,13 @@ async fn main() {
         .route("/message/sign", post(message_sign))
         .route("/message/verify", post(message_verify))
         .route("/send/sol", post(transfer_sol))
-        .route("/send/token", post(transfer_token))
-        .layer(Extension(client));
+        .route("/send/token", post(transfer_token));
 
     let port = std::env::var("PORT").unwrap_or("3000".into());
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
         .await
         .unwrap();
     axum::serve(listener, app).await.unwrap();
-}
-
-#[derive(Debug, Serialize)]
-struct Response {
-    success: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    data: Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<Value>,
 }
 
 #[debug_handler]
@@ -140,7 +127,7 @@ async fn create_token(
                     })
                 })
                 .collect();
-            let ix_data = base64::encode(instr.data);
+            let ix_data = instr.data;
             return (
                 StatusCode::OK,
                 Json(json!({
@@ -244,10 +231,8 @@ async fn token_mint(payload: Result<Json<TokenMint>, JsonRejection>) -> (StatusC
                 })
                 .collect();
 
-            // Step 3: Base64-encoded instruction data
-            let instruction_data = base64::encode(instr.data);
+            let instruction_data = instr.data;
 
-            // Final JSON structure
             (
                 StatusCode::OK,
                 Json(json!({
@@ -319,7 +304,6 @@ async fn message_verify(
         }
     };
 
-    // Convert base58 signature to Signature
     let signature = match verify_details
         .signature
         .parse::<solana_sdk::signature::Signature>()
@@ -336,11 +320,9 @@ async fn message_verify(
         }
     };
 
-    // Verify the signature
     let message_bytes = verify_details.message.as_bytes();
     let is_valid = signature.verify(&pubkey.to_bytes(), message_bytes);
 
-    // Prepare response
     let response = json!({
         "success": true,
         "data": {
@@ -556,12 +538,12 @@ async fn transfer_token(
         }
     };
 
-    if details.amount == 0 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "success": false, "error": "Amount must be greater than 0" })),
-        );
-    }
+    // if details.amount == 0 {
+    //     return (
+    //         StatusCode::BAD_REQUEST,
+    //         Json(json!({ "success": false, "error": "Amount must be greater than 0" })),
+    //     );
+    // }
 
     let instruction = token_instruction::transfer(
         &spl_token::id(),
