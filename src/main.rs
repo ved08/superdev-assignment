@@ -1,18 +1,12 @@
-use std::sync::Arc;
-
 use axum::{
     Json, Router, debug_handler,
-    extract::{Query, rejection::JsonRejection},
+    extract::rejection::JsonRejection,
     http::StatusCode,
     routing::{get, post},
 };
 use bs58;
 use serde::{Deserialize, Serialize};
-use solana_client::rpc_client::RpcClient;
-use solana_sdk::{
-    pubkey::Pubkey, signature::Keypair, signer::Signer, system_instruction,
-    transaction::Transaction,
-};
+use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::Signer, system_instruction};
 use spl_token::instruction as token_instruction;
 
 use serde_json::{Value, json};
